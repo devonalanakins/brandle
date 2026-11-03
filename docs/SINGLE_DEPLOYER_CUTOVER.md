@@ -6,18 +6,18 @@
 
 | Item | Value |
 | --- | --- |
-| Standalone source | `anevum/brandle`, `main` |
-| Current configured deployment owner | `anevum/anevum-web/.github/workflows/deploy-brandle.yml` |
-| Proposed legacy retirement | [ANEVUM Web draft PR #799](https://github.com/anevum/anevum-web/pull/799), **DO NOT MERGE YET** |
+| Standalone source | `devonalanakins/brandle`, `main` |
+| Current configured deployment owner | `devonalanakins/anevum-web/.github/workflows/deploy-brandle.yml` |
+| Proposed legacy retirement | [ANEVUM Web draft PR #799](https://github.com/devonalanakins/anevum-web/pull/799), **DO NOT MERGE YET** |
 | Inactive standalone template | `.github/staged-releases/brandle-production.yml` |
-| Administrative blockers | [Brandle issue #7](https://github.com/anevum/brandle/issues/7) |
+| Administrative blockers | [Brandle issue #7](https://github.com/devonalanakins/brandle/issues/7) |
 | Production Worker | `brandle-glimmer-grove` |
 | Live URL | https://brandle-glimmer-grove.devonakins.workers.dev/ |
 | Last observed Worker version | `1c48deb3-6c35-4b9b-9d84-a37d2596ca70` (not necessarily current) |
 
 ## Gate A — required before ANY deployment ownership change
 
-- [ ] Confirm `anevum/brandle/main` is protected, requires GitHub Actions `verify`, disallows force pushes/deletion and enforces pull-request changes. Check protections actually apply to maintainers.
+- [ ] Confirm `devonalanakins/brandle/main` is protected, requires GitHub Actions `verify`, disallows force pushes/deletion and enforces pull-request changes. Check protections actually apply to maintainers.
 - [ ] Confirm GitHub environment `brandle-production` restricts deployment to `main`; verify actual approval/wait policies rather than relying on the environment name.
 - [ ] Verify Brandle-only Cloudflare token privileges without disclosing its value. Keep the API token and account ID in protected environment secrets, not source or repository-wide secrets.
 - [ ] Independently confirm latest live Cloudflare version, bindings, routes and current asset SHA-256s against the reviewed source commit. Do not assume the Oct 30 historical snapshot is still deployed.
@@ -30,10 +30,10 @@
 
 ## Gate B — reviewed retirement of the old deployer
 
-1. Recheck [draft PR #799](https://github.com/anevum/anevum-web/pull/799) against latest monorepo `main`, with fresh exact-head `ANEVUM Verify` and `verify-only` checks. Confirm its diff removes the Wrangler deploy command and Cloudflare secret references but preserves verification, source files and history.
+1. Recheck [draft PR #799](https://github.com/devonalanakins/anevum-web/pull/799) against latest monorepo `main`, with fresh exact-head `ANEVUM Verify` and `verify-only` checks. Confirm its diff removes the Wrangler deploy command and Cloudflare secret references but preserves verification, source files and history.
 2. Check no legacy release jobs are running or queued. Prevent concurrent manual dispatch during the change window.
 3. Merge the verified PR as its own auditable step.
-4. Read back `anevum/anevum-web/main:.github/workflows/deploy-brandle.yml`. Confirm no step can deploy and no Cloudflare secrets are read. Review workflow run status on the merged commit.
+4. Read back `devonalanakins/anevum-web/main:.github/workflows/deploy-brandle.yml`. Confirm no step can deploy and no Cloudflare secrets are read. Review workflow run status on the merged commit.
 5. Keep the existing Worker running at the known-good release. **Merging a workflow change does not by itself replace or delete that Worker.**
 6. If the legacy workflow remains able to deploy, stop. Do not activate the standalone deployer.
 

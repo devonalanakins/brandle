@@ -12,7 +12,7 @@ assert.doesNotMatch(ci, /\b(?:wrangler\s+(?:deploy|publish|versions\s+deploy)|cl
 const staged = readFileSync(join(root, '.github', 'staged-releases', 'brandle-production.yml'), 'utf8');
 assert.match(staged, /workflow_dispatch:/);
 assert.doesNotMatch(staged, /^\s{2}(?:push|pull_request|schedule|repository_dispatch):/m, 'Staged release must be manual-only');
-assert.match(staged, /github\.repository == 'anevum\/brandle'/);
+assert.match(staged, /github\.repository == 'devonalanakins\/brandle'/);
 assert.match(staged, /BRANDLE_LEGACY_DEPLOY_DISABLED == 'true'/);
 assert.match(staged, /BRANDLE_RELEASE_OWNER == 'standalone'/);
 assert.match(staged, /environment: brandle-production/);

@@ -40,4 +40,4 @@ The production Worker must bundle assets using `node build-worker.mjs` before de
 
 ## Standalone repository migration
 
-This repository contains the imported Brandle source and project-specific development lineage. The original history remains available in `anevum/anevum-web`; see [source migration PR #1](https://github.com/anevum/brandle/pull/1). The original game deployment remains authoritative until a tested, rollback-ready cutover. No deployment secrets, game progress or personal data should be committed.
+This repository contains the imported Brandle source and project-specific development lineage. The original history remains available in `devonalanakins/anevum-web`; see [source migration PR #1](https://github.com/devonalanakins/brandle/pull/1). The original game deployment remains authoritative until a tested, rollback-ready cutover. No deployment secrets, game progress or personal data should be committed.
