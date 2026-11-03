@@ -21,7 +21,7 @@ jobs:
   release:
     # Repository variables are independent cutover switches; leave unset now.
     if: >-
-      ${{ github.repository == 'anevum/brandle' && github.ref == 'refs/heads/main' && vars.BRANDLE_RELEASE_OWNER == 'standalone' && vars.BRANDLE_LEGACY_DEPLOY_DISABLED == 'true' }}
+      ${{ github.repository == 'devonalanakins/brandle' && github.ref == 'refs/heads/main' && vars.BRANDLE_RELEASE_OWNER == 'standalone' && vars.BRANDLE_LEGACY_DEPLOY_DISABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: brandle-production
