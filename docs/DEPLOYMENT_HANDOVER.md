@@ -1,13 +1,13 @@
 # Brandle deployment ownership handover — staged, inactive
 
-**Status: NOT ACTIVATED.** The candidate file `.github/staged-releases/brandle-production.yml` is outside GitHub Actions' executable `.github/workflows/` directory. It is a review template, not a deployment workflow. The live game remains owned by `anevum/anevum-web/.github/workflows/deploy-brandle.yml`.
+**Status: NOT ACTIVATED.** The candidate file `.github/staged-releases/brandle-production.yml` is outside GitHub Actions' executable `.github/workflows/` directory. It is a review template, not a deployment workflow. The live game remains owned by `devonalanakins/anevum-web/.github/workflows/deploy-brandle.yml`.
 
 ## Existing evidence
 
 - Current Cloudflare Worker: `brandle-glimmer-grove` at `https://brandle-glimmer-grove.devonakins.workers.dev/`.
 - Live deployed asset bytes matched all twelve assets in standalone `main` and in the original monorepo in small job 003.
 - Last observed Cloudflare version: `1c48deb3-6c35-4b9b-9d84-a37d2596ca70` (deployment `86970d97-7975-45e5-a000-0fba9a7379f6`). These are checkpoints, **not** evidence of a rehearsed rollback.
-- Standalone source CI on commit `391f10866438dd4f3541f217094860297bbec0a6` passed in [run 41117000501](https://github.com/anevum/brandle/actions/runs/41117000501).
+- Standalone source CI on commit `391f10866438dd4f3541f217094860297bbec0a6` passed in [run 41117000501](https://github.com/devonalanakins/brandle/actions/runs/41117000501).
 - The original monorepo deploy workflow still accepts selected pushes to `main` and manual dispatch. Never activate this new release mechanism alongside it.
 
 ## Pre-cutover gates — all must be verified

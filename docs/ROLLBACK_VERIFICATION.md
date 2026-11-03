@@ -4,11 +4,11 @@ This is an audit procedure, not an executed rollback. No production Worker, depl
 
 ## Verified inputs
 
-- Independent source and CI: `anevum/brandle`. Latest verified game assets matched 12/12 deployed assets in small job 003.
+- Independent source and CI: `devonalanakins/brandle`. Latest verified game assets matched 12/12 deployed assets in small job 003.
 - Worker name: `brandle-glimmer-grove`.
 - Original deployed version at the last verified checkpoint: `1c48deb3-6c35-4b9b-9d84-a37d2596ca70`.
 - Original deployment ID: `86970d97-7975-45e5-a000-0fba9a7379f6`.
-- Existing writer: `anevum/anevum-web/.github/workflows/deploy-brandle.yml`.
+- Existing writer: `devonalanakins/anevum-web/.github/workflows/deploy-brandle.yml`.
 - Standalone writer: inactive. An inactive candidate remains under `.github/staged-releases/`.
 
 ## Read-only verification before any rollback rehearsal
