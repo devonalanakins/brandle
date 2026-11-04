@@ -4,11 +4,11 @@
 
 > **Public documentation note · November 3, 2026:** The default branch contains a standalone browser word game. Its production hosting and deployment ownership must be verified separately from source. Personal progress remains local to the user's device.
 
-[Play the game](https://brandle-glimmer-grove.devonakins.workers.dev/) · [Attribution](NOTICE.md) · [Current changes](https://github.com/devonalanakins/brandle/pulls)
+[Previously published game URL](https://brandle-glimmer-grove.devonakins.workers.dev/) · [Attribution](NOTICE.md) · [Current changes](https://github.com/devonalanakins/brandle/pulls)
 
 A personalized five-letter word game made for Brandi. Forest green, teal, burnt orange, luminous visuals and independent daily/endless play. Free and open-source; no account, analytics, payment service or backend.
 
-**Live:** https://brandle-glimmer-grove.devonakins.workers.dev/
+**Previously published URL:** https://brandle-glimmer-grove.devonakins.workers.dev/ (availability and deployment ownership require verification).
 
 ## Local development
 
