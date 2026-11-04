@@ -1,4 +1,10 @@
+<p align="center"><img src=".github/assets/readme-hero.svg" alt="Original Brandle project illustration" width="100%" /></p>
+
 # BRANDLE — The Glimmer Grove
+
+> **Public documentation note · November 3, 2026:** The default branch contains a standalone browser word game. Its production hosting and deployment ownership must be verified separately from source. Personal progress remains local to the user's device.
+
+[Play the game](https://brandle-glimmer-grove.devonakins.workers.dev/) · [Attribution](NOTICE.md) · [Current changes](https://github.com/devonalanakins/brandle/pulls)
 
 A personalized five-letter word game made for Brandi. Forest green, teal, burnt orange, luminous visuals and independent daily/endless play. Free and open-source; no account, analytics, payment service or backend.
 
