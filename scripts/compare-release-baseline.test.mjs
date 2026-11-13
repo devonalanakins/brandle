@@ -11,7 +11,7 @@ test('historical asset baseline is valid and immutable in scope', () => {
   assert.equal(baseline.worker,'brandle-glimmer-grove');
 });
 test('historical asset manifest retains its original Git blob identity', () => {
-  const hash = createHash('sha1').update('blob ' + baselineBytes.length + '\\0').update(baselineBytes).digest('hex');
+  const hash = createHash('sha1').update('blob ' + baselineBytes.length + String.fromCharCode(0)).update(baselineBytes).digest('hex');
   assert.equal(hash,'ee4ec6b52559fe1f68ac594e6a3d334709874968');
 });
 test('comparison distinguishes historical source drift from release integrity', async () => {
