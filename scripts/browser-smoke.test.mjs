@@ -70,12 +70,22 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
       '/usr/bin/chromium-browser','google-chrome'].find(p => p && (p==='google-chrome'||existsSync(p)));
     chrome = spawn(binary,['--headless=new','--disable-gpu','--disable-dev-shm-usage',
       '--no-first-run','--no-default-browser-check','--no-sandbox','--remote-debugging-port=0',
-      '--remote-allow-origins=*','--user-data-dir='+profile,'about:blank'],{stdio:'ignore'});
-    const port = await poll(async () => {
-      if (chrome.exitCode !== null) throw new Error('Chrome exited before startup');
-      try {return (await readFile(join(profile,'DevToolsActivePort'),'utf8')).split('\n')[0];}
-      catch {return null;}
-    });
+      '--remote-allow-origins=*','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','pipe','pipe']});
+    let launchError = null;
+    let chromeStderr = '';
+    chrome.on('error',error => {launchError=error.message;});
+    chrome.stderr.on('data',buffer => {chromeStderr=(chromeStderr+buffer.toString()).slice(-4000);});
+    let port;
+    try {
+      port = await poll(async () => {
+        if (launchError) throw new Error('Failed to spawn Chrome: '+launchError);
+        if (chrome.exitCode !== null) throw new Error('Chrome exited before startup: '+chrome.exitCode);
+        try {return (await readFile(join(profile,'DevToolsActivePort'),'utf8')).split('\n')[0];}
+        catch {return null;}
+      });
+    } catch (error) {
+      throw new Error(error.message+'; binary='+binary+'; chrome stderr='+chromeStderr.slice(-2000));
+    }
     const response = await fetch('http://127.0.0.1:'+port+'/json/new?about:blank',{method:'PUT'});
     assert.equal(response.ok,true,'create Chrome debugging tab');
     const tab = await response.json();
