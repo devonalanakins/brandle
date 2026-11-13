@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   ANSWERS, VALID_WORDS, utcKey, dayNumber, puzzleNumber, dailyAnswer, validWord,
-  scoreGuess, keyboardHints, freshGame, hydrateGame, initialStats, normalizeStats,
+  scoreGuess, guessFeedback, keyboardHints, freshGame, hydrateGame, initialStats, normalizeStats,
   recordResult, chooseWildAnswer, shareText
 } from "./logic.mjs";
 test("large offline dictionary and curated valid answers", () => {
@@ -18,6 +18,12 @@ test("repeat-letter scoring consumes exact matches first", () => {
   assert.deepEqual(scoreGuess("PUPPY","HAPPY"),["absent","absent","correct","correct","correct"]);
   assert.deepEqual(scoreGuess("BANAL","CANAL"),["absent","correct","correct","correct","correct"]);
   assert.deepEqual(scoreGuess("LEECH","EERIE"),["absent","correct","present","absent","absent"]);
+});
+test("inline feedback uses explicit counts for exact, misplaced and absent letters", () => {
+  assert.equal(guessFeedback("CRANE","APPLE"),"1 RIGHT · 1 ELSEWHERE · 3 OUT");
+  assert.equal(guessFeedback("ALLEY","APPLE"),"1 RIGHT · 2 ELSEWHERE · 2 OUT");
+  assert.equal(guessFeedback("APPLE","APPLE"),"5 RIGHT · 0 ELSEWHERE · 0 OUT");
+  assert.throws(() => guessFeedback("BAD","APPLE"),TypeError);
 });
 test("keyboard hints preserve strongest prior evidence", () => {
   assert.deepEqual(keyboardHints(["ALLEY","APPLE"],"APPLE"),{A:"correct",L:"correct",E:"correct",Y:"absent",P:"correct"});
