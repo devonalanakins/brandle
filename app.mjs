@@ -1,4 +1,4 @@
-import { ANSWERS, MAX_ROWS, WORD_LENGTH, utcKey, puzzleNumber, dailyAnswer, validWord, scoreGuess, keyboardHints, freshGame, hydrateGame, initialStats, normalizeStats, recordResult, chooseWildAnswer, shareText } from "./logic.mjs";
+import { ANSWERS, MAX_ROWS, WORD_LENGTH, utcKey, puzzleNumber, dailyAnswer, validWord, scoreGuess, keyboardHints, freshGame, hydrateGame, initialStats, normalizeStats, recordResult, chooseWildAnswer, shareText, guessFeedback } from "./logic.mjs";
 
 const $ = (selector) => document.querySelector(selector);
 const dateKey = utcKey();
@@ -155,8 +155,13 @@ function renderBoard() {
   }
   board.setAttribute("aria-label", "Word grid, " + game.guesses.length + " of 6 guesses submitted");
   $("#progress-indicator").textContent = game.finished ? (game.won ? "SOLVED" : "ENDED") : String(game.guesses.length + 1).padStart(2, "0") + " / 06";
-  $("#status-line").textContent = game.finished ? (game.won ? "THE GROVE IS GLOWING ✦" : "THE GROVE RESTS TONIGHT") : "THE GROVE AWAITS YOUR WORD";
-  $("#status-line").classList.toggle("won", game.finished && game.won);
+  const message = game.finished ? (game.won ? "THE GROVE IS GLOWING ✦" : "THE GROVE RESTS TONIGHT")
+    : state.revealing ? "WATCH YOUR WORD BLOOM"
+    : game.guesses.length ? guessFeedback(game.guesses.at(-1), game.answer)
+    : "FIVE LETTERS · SIX TRIES · TAP ? FOR HELP";
+  const status = $("#status-line");
+  if (status.textContent !== message) status.textContent = message;
+  status.classList.toggle("won", game.finished && game.won);
 }
 const KEY_ROWS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
 function renderKeyboard() {
@@ -455,10 +460,7 @@ settleCompletedRound("daily");
 settleCompletedRound("wild");
 render();
 window.setInterval(syncDay, 1000);
-if (!read(KEYS.seen, false)) {
-  write(KEYS.seen, true);
-  window.setTimeout(() => openModal("help"), 440);
-}
+// The puzzle must be playable immediately; the help button opens the optional field guide.
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
 }
