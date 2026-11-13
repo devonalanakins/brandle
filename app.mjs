@@ -416,6 +416,9 @@ document.addEventListener("keydown", event => {
   if (event.ctrlKey || event.altKey || event.metaKey || event.repeat || event.isComposing) return;
   const target = event.target;
   if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT","TEXTAREA","SELECT"].includes(target.tagName))) return;
+  // Enter activates the focused button natively. Avoid submitting a guess twice.
+  if (event.key === "Enter" && target instanceof HTMLElement &&
+      target.closest('button, a[href], summary, [role="button"], [role="link"], [role="switch"]')) return;
   const key = event.key === "Backspace" ? "BACK" : event.key === "Enter" ? "ENTER" : event.key.toUpperCase();
   if (key === "BACK" || key === "ENTER" || /^[A-Z]$/.test(key)) {
     if (key === "BACK") event.preventDefault();
