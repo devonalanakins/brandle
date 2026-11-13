@@ -8,6 +8,7 @@ const html = await read('index.html');
 const css = await read('glimmer-v2.css');
 const workerBuilder = await read('build-worker.mjs');
 const serviceWorker = await read('sw.js');
+const app = await read('app.mjs');
 
 test('single-screen layout keeps existing gameplay hooks wired', () => {
   for (const id of ['board', 'keyboard', 'mode-daily', 'mode-wild', 'result-button',
@@ -33,4 +34,11 @@ test('offline bundle includes every visual dependency', () => {
   assert.match(workerBuilder, /"glimmer-v2\.css"/);
   assert.match(serviceWorker, /"\.\/glimmer-v2\.css"/);
   assert.match(serviceWorker, /brandle-glimmer-grove-v2/);
+});
+
+test('first play starts immediately with optional help and accessible feedback', () => {
+  assert.doesNotMatch(app, /setTimeout\(\s*\(\)\s*=>\s*openModal\("help"\)/);
+  assert.match(app, /guessFeedback\(game\.guesses\.at\(-1\), game\.answer\)/);
+  assert.match(html, /id="status-line" aria-live="polite"/);
+  assert.match(html, /id="help-button"[^>]*aria-label="How to play"/);
 });
