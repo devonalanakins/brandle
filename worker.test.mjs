@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import worker from './dist/worker.mjs';
 
 const assets = [
-  'index.html', 'styles.css', 'app.mjs', 'logic.mjs', 'words.mjs',
+  'index.html', 'styles.css', 'glimmer-v2.css', 'app.mjs', 'logic.mjs', 'words.mjs',
   'manifest.webmanifest', 'icon.svg', 'icon-180.png', 'icon-512.png',
   'og.png', 'og.svg', 'sw.js'
 ];
