@@ -24,6 +24,7 @@ jobs:
       - run: node --test release-guard.test.mjs
       - run: node --test tests.mjs
       - run: node --test layout.test.mjs
+      - run: node --test scripts/browser-smoke.test.mjs
       - run: node build-worker.mjs
       - run: node --check dist/worker.mjs
       - run: node --test worker.test.mjs
