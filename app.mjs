@@ -193,7 +193,8 @@ function renderKeyboard() {
   for (const button of keyboard.querySelectorAll("button[data-key]")) {
     const key = button.dataset.key;
     button.className = "key" + (key.length > 1 ? " key-action" : "") + (hints[key] ? " key-" + hints[key] : "");
-    button.disabled = game.finished || state.revealing;
+    button.disabled = game.finished;
+    button.setAttribute("aria-disabled", String(game.finished || state.revealing));
   }
 }
 function render() {
