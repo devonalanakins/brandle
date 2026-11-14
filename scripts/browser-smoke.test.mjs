@@ -49,7 +49,7 @@ class CDP {
     return response.result.value;
   }
 }
-const inspect = '(() => { const rect = q => { const r=document.querySelector(q)?.getBoundingClientRect(); return r && {left:r.left,top:r.top,right:r.right,bottom:r.bottom}; }; return {width:innerWidth,height:innerHeight,scrollW:document.documentElement.scrollWidth,scrollH:document.documentElement.scrollHeight,game:rect(".game"),board:rect(".board"),keyboard:rect(".keyboard"),footer:rect(".footer"),tiles:document.querySelectorAll("#board .tile").length,keys:document.querySelectorAll("#keyboard button").length}; })()';
+const inspect = '(() => { const rect = q => { const e=document.querySelector(q); const r=e?.getBoundingClientRect(); const s=e && getComputedStyle(e); return r && {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height,visible:s.display!=="none"&&s.visibility!=="hidden"&&Number(s.opacity)>0&&r.width>0&&r.height>0}; }; return {width:innerWidth,height:innerHeight,scrollW:document.documentElement.scrollWidth,scrollH:document.documentElement.scrollHeight,game:rect(".game"),board:rect(".board"),keyboard:rect(".keyboard"),footer:rect(".footer"),countdown:rect("#next-countdown"),tiles:document.querySelectorAll("#board .tile").length,keys:document.querySelectorAll("#keyboard button").length}; })()';
 
 test('real browser: board, keyboard, controls and footer fit without scrolling', {timeout:60000}, async () => {
   const profile = await mkdtemp(join(tmpdir(),'brandle-chrome-'));
@@ -108,11 +108,16 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
       assert.equal(state.keys,28,'keyboard count at '+width+'x'+height);
       assert.ok(state.scrollH<=state.height+1 && state.scrollW<=state.width+1,
         'page overflow at '+width+'x'+height);
-      for (const name of ['board','keyboard','footer']) {
+      for (const name of ['board','keyboard','footer','countdown']) {
         const r=state[name];
-        assert.ok(r && r.left>=-1 && r.right<=width+1 && r.top>=-1 && r.bottom<=height+1,
+        assert.ok(r?.visible, name+' must be displayed at '+width+'x'+height+': '+JSON.stringify(r));
+        assert.ok(r.left>=-1 && r.right<=width+1 && r.top>=-1 && r.bottom<=height+1,
           name+' clipped at '+width+'x'+height+': '+JSON.stringify(r));
       }
+      if (height>=500) assert.ok(state.board.bottom<=state.keyboard.top+1,
+        'portrait board overlaps keyboard at '+width+'x'+height);
+      if (height<500) assert.ok(state.board.right<=state.keyboard.left+1,
+        'landscape board overlaps keyboard at '+width+'x'+height);
       for (const name of ['board','keyboard']) {
         const r=state[name];
         assert.ok(r.top>=state.game.top-1 && r.bottom<=state.game.bottom+1,
@@ -127,9 +132,10 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
       await cdp.eval('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
       const state = await cdp.eval(inspect);
       assert.ok(state.scrollH<=height+1 && state.scrollW<=width+1,'mobile page overflows '+width+'x'+height);
-      for (const name of ['board','keyboard','footer']) {
+      for (const name of ['board','keyboard','footer','countdown']) {
         const rect = state[name];
-        assert.ok(rect && rect.left>=-1 && rect.right<=width+1 && rect.top>=-1 && rect.bottom<=height+1,
+        assert.ok(rect?.visible,'mobile '+name+' must be displayed at '+width+'x'+height+': '+JSON.stringify(rect));
+        assert.ok(rect.left>=-1 && rect.right<=width+1 && rect.top>=-1 && rect.bottom<=height+1,
           'mobile '+name+' clipped at '+width+'x'+height+': '+JSON.stringify(rect));
       }
       console.log('mobile '+width+'x'+height+': board, keyboard and footer visible');
