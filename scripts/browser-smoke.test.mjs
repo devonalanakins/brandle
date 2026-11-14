@@ -230,8 +230,20 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
     assert.equal(await cdp.eval('document.activeElement.disabled'),false,'restored focus remains usable');
     await cdp.eval('document.querySelector("#result-button").click()');
     assert.equal(await cdp.eval('document.querySelector("#modal").open'),true,'result remains accessible');
+
+    // Simulate the UTC date changing while the result is open. The completed
+    // game must not be replaced until the player closes their result.
+    const priorLabel = await cdp.eval('document.querySelector("#puzzle-label").textContent');
+    assert.equal(await cdp.eval('(() => { const NativeDate=Date; const next=NativeDate.now()+86400000; window.Date=class extends NativeDate { constructor(...args) { super(...(args.length?args:[next])); } static now() { return next; } }; return true; })()'),true);
+    await delay(1300); // Wait for the game's one-second UTC rollover check.
+    assert.equal(await cdp.eval('document.querySelector("#modal").open'),true,'midnight keeps the open result visible');
+    assert.equal(await cdp.eval('document.querySelector("#progress-indicator").textContent'),"SOLVED",'old round remains scored at midnight');
+    assert.equal(await cdp.eval('document.querySelector("#puzzle-label").textContent'),priorLabel,'round label stays on its original date');
     await cdp.eval('document.querySelector("#modal-close").click()');
-    await poll(() => cdp.eval('document.activeElement?.id === "result-button"'));
+    await poll(() => cdp.eval('document.querySelector("#progress-indicator").textContent === "01 / 06"'),3500);
+    assert.notEqual(await cdp.eval('document.querySelector("#puzzle-label").textContent'),priorLabel,'closing results loads the new day');
+    assert.equal(await cdp.eval('document.querySelector("#board .tile").textContent'),"",'new day starts with an empty grid');
+    assert.equal(await cdp.eval('JSON.parse(localStorage.getItem("brandle-v1:stats-daily")).wins'),1,'previous win survives day transition');
   } finally {
     ws?.close();
     if (chrome) {chrome.kill();await delay(200);}
