@@ -328,7 +328,20 @@ function modeChange(mode) {
 }
 const modal = $("#modal");
 $("#modal-close").addEventListener("click", () => modal.close());
-modal.addEventListener("close", () => { state.modal = null; state.lastFocus?.focus?.(); });
+// A finished round disables the on-screen letter keys. Returning focus to the
+// formerly active Enter button after results close would strand keyboard users.
+function canRestoreFocus(element) {
+  if (!(element instanceof HTMLElement) || !element.isConnected || element.matches(":disabled")) return false;
+  const style = getComputedStyle(element);
+  return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+}
+modal.addEventListener("close", () => {
+  state.modal = null;
+  const preferred = state.lastFocus;
+  state.lastFocus = null;
+  const target = [preferred, $("#result-button"), $("#next-button"), $("#mode-" + state.mode), $("#help-button")].find(canRestoreFocus);
+  target?.focus();
+});
 modal.addEventListener("click", event => {
   const rect = modal.getBoundingClientRect();
   if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) modal.close();
@@ -374,6 +387,8 @@ function openModal(kind) {
       '<div class="setting-row"><div><strong>High contrast</strong><small>More distinctive tile and key colors</small></div><input id="setting-contrast" type="checkbox" role="switch"' + (settings.contrast ? " checked" : "") + '></div>' +
       '<p class="modal-note">Reduced Motion device settings are respected automatically. On iPhone browsers, web vibration is unavailable; sound and animation provide tactile-style feedback.</p>';
   }
+  const heading = body.querySelector("h2");
+  if (heading) heading.id = "dialog-title";
   $("#modal-close").innerHTML = icon("close");
   $("#modal-close").setAttribute("aria-label", "Close dialog");
   if (!modal.open) modal.showModal();
