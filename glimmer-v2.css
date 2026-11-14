@@ -47,6 +47,7 @@ body{height:100dvh;background:radial-gradient(ellipse 65% 62% at 50% 37%,#1c5c4c
 .keyboard{order:3;align-self:stretch;max-width:436px;gap:clamp(3px,.5dvh,6px);width:100%;flex:none}
 .keyboard-row{gap:3px}
 .key{height:var(--key-height);border-radius:9px;border-color:#8fbaa270;background:linear-gradient(160deg,#427563bb,#21483dbf);color:#f5f3e8;font-size:clamp(11px,2.9vw,14px);box-shadow:inset 0 1px 0 #ffffff34,0 4px 8px #0004}
+ .key[aria-disabled="true"]{opacity:.55;cursor:default}
 .key-action{flex:1.4 1 0;background:linear-gradient(150deg,#eab07d,#9c603c);color:#0b281e;border-color:#ffcc99}
 .key-action[data-key="ENTER"]{background:linear-gradient(150deg,#f7c58e,#b9784a);color:#102a20;border-color:#ffd5a2}
 .key-correct{background:#1e8664}.key-present{background:#177e88}.key-absent{background:#293f36;color:#9cb9aa}
