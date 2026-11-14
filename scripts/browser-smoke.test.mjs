@@ -209,6 +209,19 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
     const result = await cdp.eval('JSON.parse(localStorage.getItem("brandle-v1:stats-daily"))');
     assert.equal(result.played,1,'completed round recorded exactly once');
     assert.equal(result.wins,1,'completed win recorded');
+    assert.equal(await cdp.eval('document.querySelector("#modal").getAttribute("aria-labelledby")'),
+      "dialog-title",'result dialog gets its name from the visible title');
+    assert.equal(await cdp.eval('document.querySelector("#modal #dialog-title")?.tagName'),
+      "H2",'result dialog has an accessible heading');
+    // Enter is disabled after the round ends. Closing results must return to
+    // the now-visible results control rather than the disabled Enter key.
+    await cdp.eval('document.querySelector("#modal-close").click()');
+    await poll(() => cdp.eval('document.activeElement?.id === "result-button"'));
+    assert.equal(await cdp.eval('document.activeElement.disabled'),false,'restored focus remains usable');
+    await cdp.eval('document.querySelector("#result-button").click()');
+    assert.equal(await cdp.eval('document.querySelector("#modal").open'),true,'result remains accessible');
+    await cdp.eval('document.querySelector("#modal-close").click()');
+    await poll(() => cdp.eval('document.activeElement?.id === "result-button"'));
   } finally {
     ws?.close();
     if (chrome) {chrome.kill();await delay(200);}
