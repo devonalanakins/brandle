@@ -23,8 +23,46 @@ jobs:
       - run: node --test scripts/compare-release-baseline.test.mjs
       - run: node --test release-guard.test.mjs
       - run: node --test tests.mjs
+      - run: node --test layout.test.mjs
+      - run: node --test scripts/browser-smoke.test.mjs
+        env:
+          BRANDLE_SCREENSHOT_DIR: ${{ runner.temp }}/brandle-visual-qa
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        with:
+          name: brandle-v2-visual-qa
+          path: ${{ runner.temp }}/brandle-visual-qa/*.png
+          if-no-files-found: ignore
+          retention-days: 3
       - run: node build-worker.mjs
       - run: node --check dist/worker.mjs
       - run: node --test worker.test.mjs
+
+  webkit-mobile:
+    name: WebKit mobile acceptance (headless)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # Test-only tooling, not part of Brandle's runtime or worker bundle.
+      - name: Install pinned WebKit test runner
+        run: npm install --no-save --package-lock=false playwright@1.65.0
+      - name: Install WebKit and its system dependencies
+        run: npx playwright install --with-deps webkit
+      - name: Exercise game in WebKit mobile emulation
+        run: node --test scripts/webkit-smoke.test.mjs
+        env:
+          BRANDLE_WEBKIT_SCREENSHOT_DIR: ${{ runner.temp }}/brandle-webkit-qa
+      - name: Attach WebKit screenshots for visual review
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: brandle-v2-webkit-visual-qa
+          path: ${{ runner.temp }}/brandle-webkit-qa/*.png
+          if-no-files-found: ignore
+          retention-days: 3
 # CI ONLY: production Brandle Worker remains deployed from the original repository
 # until the new repository, credentials, release and rollback have been verified.

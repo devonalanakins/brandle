@@ -1,4 +1,4 @@
-import { ANSWERS, MAX_ROWS, WORD_LENGTH, utcKey, puzzleNumber, dailyAnswer, validWord, scoreGuess, keyboardHints, freshGame, hydrateGame, initialStats, normalizeStats, recordResult, chooseWildAnswer, shareText } from "./logic.mjs";
+import { ANSWERS, MAX_ROWS, WORD_LENGTH, utcKey, puzzleNumber, dailyAnswer, validWord, scoreGuess, keyboardHints, freshGame, hydrateGame, initialStats, normalizeStats, recordResult, chooseWildAnswer, shareText, guessFeedback } from "./logic.mjs";
 
 const $ = (selector) => document.querySelector(selector);
 const dateKey = utcKey();
@@ -43,7 +43,7 @@ const settings = {
 const state = {
   mode: read(KEYS.mode, "daily") === "wild" ? "wild" : "daily",
   date: dateKey, daily: dailyState(dateKey), wild: wildState(),
-  revealing: false, revealRow: -1, revealStep: -1, modal: null, toastTimer: null, lastFocus: null
+  revealing: false, resultPending: false, revealRow: -1, revealStep: -1, modal: null, toastTimer: null, lastFocus: null
 };
 const getGame = () => state[state.mode];
 const getStats = () => normalizeStats(read(state.mode === "daily" ? KEYS.dailyStats : KEYS.wildStats, initialStats()));
@@ -124,39 +124,66 @@ function updateCountdown() {
 function renderBoard() {
   const game = getGame();
   const board = $("#board");
-  board.replaceChildren();
+  // Keep the same cells throughout play. Rebuilding this grid on every keystroke
+  // can reset a screen reader's position in the puzzle.
+  if (board.children.length !== MAX_ROWS) {
+    board.replaceChildren();
+    board.setAttribute("aria-rowcount", String(MAX_ROWS));
+    board.setAttribute("aria-colcount", String(WORD_LENGTH));
+    for (let r = 0; r < MAX_ROWS; r++) {
+      const row = document.createElement("div");
+      row.className = "tile-row";
+      row.setAttribute("role", "row");
+      row.setAttribute("aria-rowindex", String(r + 1));
+      row.dataset.row = String(r);
+      for (let c = 0; c < WORD_LENGTH; c++) {
+        const tile = document.createElement("div");
+        tile.className = "tile";
+        tile.setAttribute("role", "gridcell");
+        tile.setAttribute("aria-colindex", String(c + 1));
+        tile.setAttribute("aria-label", "empty");
+        row.append(tile);
+      }
+      board.append(row);
+    }
+  }
+
   for (let r = 0; r < MAX_ROWS; r++) {
-    const row = document.createElement("div");
-    row.className = "tile-row";
-    row.setAttribute("role", "row");
-    row.dataset.row = String(r);
-    if (r === game.guesses.length && !game.finished) row.classList.add("row-active");
-    if (state.revealing && r === state.revealRow) row.classList.add("row-revealing");
+    const row = board.children[r];
+    const currentRow = r === game.guesses.length && !game.finished;
+    const revealingRow = state.revealing && r === state.revealRow;
+    const rowClass = "tile-row" + (currentRow ? " row-active" : "") + (revealingRow ? " row-revealing" : "");
+    if (row.className !== rowClass) row.className = rowClass;
     const word = game.guesses[r] ?? (r === game.guesses.length ? game.current : "");
     const statuses = r < game.guesses.length ? scoreGuess(game.guesses[r], game.answer) : [];
     for (let c = 0; c < WORD_LENGTH; c++) {
-      const tile = document.createElement("div");
-      tile.className = "tile";
-      tile.setAttribute("role", "gridcell");
+      const tile = row.children[c];
       const letter = word[c] ?? "";
-      tile.textContent = letter;
-      const shown = r < game.guesses.length && (!state.revealing || r !== state.revealRow || c <= state.revealStep);
+      const shown = r < game.guesses.length && (!state.revealing || !revealingRow || c <= state.revealStep);
+      let tileClass = "tile";
+      let label;
       if (shown) {
-        tile.classList.add("tile-" + statuses[c], "tile-revealed");
-        tile.setAttribute("aria-label", letter + ", " + statuses[c]);
-        if (state.revealing && r === state.revealRow && c === state.revealStep) tile.classList.add("tile-flipping");
+        tileClass += " tile-" + statuses[c] + " tile-revealed";
+        label = letter + ", " + statuses[c];
+        if (revealingRow && c === state.revealStep) tileClass += " tile-flipping";
       } else {
-        if (letter) tile.classList.add("tile-filled");
-        tile.setAttribute("aria-label", letter ? letter + ", not evaluated" : "empty");
+        if (letter) tileClass += " tile-filled";
+        label = letter ? letter + ", not evaluated" : "empty";
       }
-      row.append(tile);
+      if (tile.textContent !== letter) tile.textContent = letter;
+      if (tile.className !== tileClass) tile.className = tileClass;
+      if (tile.getAttribute("aria-label") !== label) tile.setAttribute("aria-label", label);
     }
-    board.append(row);
   }
   board.setAttribute("aria-label", "Word grid, " + game.guesses.length + " of 6 guesses submitted");
   $("#progress-indicator").textContent = game.finished ? (game.won ? "SOLVED" : "ENDED") : String(game.guesses.length + 1).padStart(2, "0") + " / 06";
-  $("#status-line").textContent = game.finished ? (game.won ? "THE GROVE IS GLOWING ✦" : "THE GROVE RESTS TONIGHT") : "THE GROVE AWAITS YOUR WORD";
-  $("#status-line").classList.toggle("won", game.finished && game.won);
+  const message = game.finished ? (game.won ? "THE GROVE IS GLOWING ✦" : "THE GROVE RESTS TONIGHT")
+    : state.revealing ? "WATCH YOUR WORD BLOOM"
+    : game.guesses.length ? guessFeedback(game.guesses.at(-1), game.answer)
+    : "FIVE LETTERS · SIX TRIES · TAP ? FOR HELP";
+  const status = $("#status-line");
+  if (status.textContent !== message) status.textContent = message;
+  status.classList.toggle("won", game.finished && game.won);
 }
 const KEY_ROWS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
 function renderKeyboard() {
@@ -164,25 +191,40 @@ function renderKeyboard() {
   const game = getGame();
   const guesses = state.revealing ? game.guesses.slice(0, state.revealRow) : game.guesses;
   const hints = keyboardHints(guesses, game.answer);
-  keyboard.replaceChildren();
-  KEY_ROWS.forEach((line, i) => {
-    const row = document.createElement("div");
-    row.className = "keyboard-row";
-    if (i === 2) row.classList.add("keyboard-row-last");
-    const keys = i === 2 ? ["ENTER", ...line, "BACK"] : [...line];
-    for (const key of keys) {
-      const b = document.createElement("button");
-      b.className = "key" + (key.length > 1 ? " key-action" : "") + (hints[key] ? " key-" + hints[key] : "");
-      b.type = "button";
-      b.dataset.key = key;
-      b.setAttribute("aria-label", key === "BACK" ? "Backspace" : key === "ENTER" ? "Submit guess" : key);
-      b.innerHTML = key === "BACK" ? icon("back", 19) : key === "ENTER" ? '<span>ENTER</span>' : key;
-      b.disabled = game.finished || state.revealing;
-      b.addEventListener("click", () => onKey(key, true));
-      row.append(b);
-    }
-    keyboard.append(row);
-  });
+  // Keep the same 28 button nodes across mode changes and reveals. Replacing
+  // focused buttons forces keyboard and assistive-technology users to restart navigation.
+  if (!keyboard.children.length) {
+    KEY_ROWS.forEach((line, i) => {
+      const row = document.createElement("div");
+      row.className = "keyboard-row";
+      if (i === 2) row.classList.add("keyboard-row-last");
+      const keys = i === 2 ? ["ENTER", ...line, "BACK"] : [...line];
+      for (const key of keys) {
+        const button = document.createElement("button");
+        button.className = "key" + (key.length > 1 ? " key-action" : "");
+        button.type = "button";
+        button.dataset.key = key;
+        button.setAttribute("aria-label", key === "BACK" ? "Backspace" : key === "ENTER" ? "Submit guess" : key);
+        button.innerHTML = key === "BACK" ? icon("back", 19) : key === "ENTER" ? '<span>ENTER</span>' : key;
+        button.addEventListener("click", () => onKey(key, true));
+        row.append(button);
+      }
+      keyboard.append(row);
+    });
+  }
+  for (const button of keyboard.querySelectorAll("button[data-key]")) {
+    const key = button.dataset.key;
+    const hint = hints[key];
+    button.className = "key" + (key.length > 1 ? " key-action" : "") + (hint ? " key-" + hint : "");
+    // The colored keyboard also communicates learned hints to screen readers.
+    // Avoid redundant name changes on focused buttons between renders.
+    const hintLabel = { correct: "correct position", present: "in word, other position", absent: "not in word" };
+    const label = key === "BACK" ? "Backspace" : key === "ENTER" ? "Submit guess"
+      : key + (hint ? ", " + hintLabel[hint] : "");
+    if (button.getAttribute("aria-label") !== label) button.setAttribute("aria-label", label);
+    button.disabled = game.finished;
+    button.setAttribute("aria-disabled", String(game.finished || state.revealing));
+  }
 }
 function render() {
   updateHeader();
@@ -244,15 +286,18 @@ function submit() {
   game.current = "";
   game.won = word === game.answer;
   game.finished = game.won || game.guesses.length >= MAX_ROWS;
+  // Keep this round's UTC date stable until its result has been presented.
+  state.resultPending = game.finished;
   saveGame();
   render();
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let step = 0;
   const reveal = () => {
     if (!state.revealing) return;
-    state.revealStep = step++;
-    sound("flip");
+    state.revealStep = reducedMotion ? WORD_LENGTH - 1 : step++;
+    if (!reducedMotion) sound("flip");
     renderBoard();
-    if (step < 5) {
+    if (!reducedMotion && step < WORD_LENGTH) {
       window.setTimeout(reveal, settings.intensity === "calm" ? 95 : 215);
     } else {
       window.setTimeout(() => {
@@ -269,14 +314,15 @@ function submit() {
         if (game.finished) {
           if (game.won) { sound("win"); celebrate(); }
           else sound("error");
-          window.setTimeout(() => openModal("result"), game.won && settings.intensity === "spectacular" ? 1600 : 460);
+          window.setTimeout(() => openModal("result"),
+            reducedMotion ? 0 : game.won && settings.intensity === "spectacular" ? 1600 : 460);
         } else if (word === game.answer) {
           toast("Pure magic.", "success");
         }
-      }, settings.intensity === "calm" ? 140 : 440);
+      }, reducedMotion ? 0 : settings.intensity === "calm" ? 140 : 440);
     }
   };
-  window.setTimeout(reveal, 170);
+  window.setTimeout(reveal, reducedMotion ? 0 : 170);
 }
 function celebrate() {
   if (settings.intensity === "calm" || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -306,7 +352,23 @@ function modeChange(mode) {
 }
 const modal = $("#modal");
 $("#modal-close").addEventListener("click", () => modal.close());
-modal.addEventListener("close", () => { state.modal = null; state.lastFocus?.focus?.(); });
+// A finished round disables the on-screen letter keys. Returning focus to the
+// formerly active Enter button after results close would strand keyboard users.
+function canRestoreFocus(element) {
+  if (!(element instanceof HTMLElement) || !element.isConnected || element.matches(":disabled")) return false;
+  const style = getComputedStyle(element);
+  return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+}
+modal.addEventListener("close", () => {
+  const closingResult = state.modal === "result";
+  state.modal = null;
+  // Only after the result closes may a new UTC day replace the board.
+  if (closingResult) syncDay();
+  const preferred = state.lastFocus;
+  state.lastFocus = null;
+  const target = [preferred, $("#result-button"), $("#next-button"), $("#mode-" + state.mode), $("#help-button")].find(canRestoreFocus);
+  target?.focus();
+});
 modal.addEventListener("click", event => {
   const rect = modal.getBoundingClientRect();
   if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) modal.close();
@@ -316,6 +378,7 @@ function openModal(kind) {
   if (state.revealing) return;
   state.lastFocus = document.activeElement;
   state.modal = kind;
+  if (kind === "result") state.resultPending = false;
   const game = getGame();
   const stats = getStats();
   const body = $("#modal-body");
@@ -352,6 +415,8 @@ function openModal(kind) {
       '<div class="setting-row"><div><strong>High contrast</strong><small>More distinctive tile and key colors</small></div><input id="setting-contrast" type="checkbox" role="switch"' + (settings.contrast ? " checked" : "") + '></div>' +
       '<p class="modal-note">Reduced Motion device settings are respected automatically. On iPhone browsers, web vibration is unavailable; sound and animation provide tactile-style feedback.</p>';
   }
+  const heading = body.querySelector("h2");
+  if (heading) heading.id = "dialog-title";
   $("#modal-close").innerHTML = icon("close");
   $("#modal-close").setAttribute("aria-label", "Close dialog");
   if (!modal.open) modal.showModal();
@@ -404,10 +469,16 @@ function nextWild() {
 function syncDay() {
   const today = utcKey();
   if (today !== state.date) {
-    state.date = today;
-    state.daily = dailyState(today);
-    render();
-    toast("A new daily bloom has arrived.", "success");
+    // A round that crosses midnight must finish scoring under its original date.
+    // Don't replace its result behind the dialog or before the animation ends.
+    if (state.revealing || state.resultPending || state.modal === "result") {
+      updateCountdown();
+    } else {
+      state.date = today;
+      state.daily = dailyState(today);
+      render();
+      toast("A new daily bloom has arrived.", "success");
+    }
   } else updateCountdown();
   if (state.modal === "result" && $("#dialog-countdown")) $("#dialog-countdown").textContent = $("#next-countdown").textContent;
 }
@@ -416,6 +487,9 @@ document.addEventListener("keydown", event => {
   if (event.ctrlKey || event.altKey || event.metaKey || event.repeat || event.isComposing) return;
   const target = event.target;
   if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT","TEXTAREA","SELECT"].includes(target.tagName))) return;
+  // Enter activates the focused button natively. Avoid submitting a guess twice.
+  if (event.key === "Enter" && target instanceof HTMLElement &&
+      target.closest('button, a[href], summary, [role="button"], [role="link"], [role="switch"]')) return;
   const key = event.key === "Backspace" ? "BACK" : event.key === "Enter" ? "ENTER" : event.key.toUpperCase();
   if (key === "BACK" || key === "ENTER" || /^[A-Z]$/.test(key)) {
     if (key === "BACK") event.preventDefault();
@@ -452,10 +526,7 @@ settleCompletedRound("daily");
 settleCompletedRound("wild");
 render();
 window.setInterval(syncDay, 1000);
-if (!read(KEYS.seen, false)) {
-  write(KEYS.seen, true);
-  window.setTimeout(() => openModal("help"), 440);
-}
-if ("serviceWorker" in navigator && location.protocol === "https:") {
+// The puzzle must be playable immediately; the help button opens the optional field guide.
+if ("serviceWorker" in navigator && window.isSecureContext) {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
 }

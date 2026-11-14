@@ -45,6 +45,12 @@ export function scoreGuess(guess, answer) {
   }
   return result;
 }
+// Short, non-color-only feedback for the single-screen status line.
+export function guessFeedback(guess, answer) {
+  const counts = { correct: 0, present: 0, absent: 0 };
+  for (const result of scoreGuess(guess, answer)) counts[result]++;
+  return counts.correct + " RIGHT · " + counts.present + " ELSEWHERE · " + counts.absent + " OUT";
+}
 const WEIGHT = { absent: 1, present: 2, correct: 3 };
 export function keyboardHints(guesses, answer) {
   const hints = {};

@@ -3,7 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const FILES = [
- "index.html","styles.css","app.mjs","logic.mjs","words.mjs",
+ "index.html","styles.css","glimmer-v2.css","app.mjs","logic.mjs","words.mjs",
  "manifest.webmanifest","icon.svg","icon-180.png","icon-512.png",
  "og.png","og.svg","sw.js"
 ];
