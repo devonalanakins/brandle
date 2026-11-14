@@ -45,7 +45,8 @@ class CDP {
   }
   async eval(expression) {
     const response = await this.send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
-    if (response.exceptionDetails) throw new Error('Browser evaluation failed: ' + response.exceptionDetails.text);
+    if (response.exceptionDetails) throw new Error('Browser evaluation failed: ' +
+      (response.exceptionDetails.exception?.description || response.exceptionDetails.text));
     return response.result.value;
   }
 }
@@ -158,7 +159,7 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
     }
     await cdp.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
     assert.equal(await cdp.eval('(() => { const grid=document.querySelector("#board"); window.__firstTile=grid.querySelector(".tile"); return grid.getAttribute("aria-rowcount")+"x"+grid.getAttribute("aria-colcount"); })()'),"6x5","grid advertises its complete dimensions");
-    assert.equal(await cdp.eval('document.querySelector("#board [role=row][aria-rowindex="6"] [aria-colindex="5"]") !== null'),true,"grid indexes the final cell");
+    assert.equal(await cdp.eval('document.querySelectorAll("#board [role=row]")[5]?.children[4]?.getAttribute("aria-colindex")==="5"'),true,"grid indexes the final cell");
     await cdp.eval('document.querySelector(\'[data-key="C"]\').click()');
     assert.equal(await cdp.eval('document.querySelector("#board .tile").textContent'),'C','tap enters a letter');
     assert.equal(await cdp.eval('document.querySelector("#board .tile") === window.__firstTile'),true,'typing reuses the same grid cell');
