@@ -169,25 +169,32 @@ function renderKeyboard() {
   const game = getGame();
   const guesses = state.revealing ? game.guesses.slice(0, state.revealRow) : game.guesses;
   const hints = keyboardHints(guesses, game.answer);
-  keyboard.replaceChildren();
-  KEY_ROWS.forEach((line, i) => {
-    const row = document.createElement("div");
-    row.className = "keyboard-row";
-    if (i === 2) row.classList.add("keyboard-row-last");
-    const keys = i === 2 ? ["ENTER", ...line, "BACK"] : [...line];
-    for (const key of keys) {
-      const b = document.createElement("button");
-      b.className = "key" + (key.length > 1 ? " key-action" : "") + (hints[key] ? " key-" + hints[key] : "");
-      b.type = "button";
-      b.dataset.key = key;
-      b.setAttribute("aria-label", key === "BACK" ? "Backspace" : key === "ENTER" ? "Submit guess" : key);
-      b.innerHTML = key === "BACK" ? icon("back", 19) : key === "ENTER" ? '<span>ENTER</span>' : key;
-      b.disabled = game.finished || state.revealing;
-      b.addEventListener("click", () => onKey(key, true));
-      row.append(b);
-    }
-    keyboard.append(row);
-  });
+  // Keep the same 28 button nodes across mode changes and reveals. Replacing
+  // focused buttons forces keyboard and assistive-technology users to restart navigation.
+  if (!keyboard.children.length) {
+    KEY_ROWS.forEach((line, i) => {
+      const row = document.createElement("div");
+      row.className = "keyboard-row";
+      if (i === 2) row.classList.add("keyboard-row-last");
+      const keys = i === 2 ? ["ENTER", ...line, "BACK"] : [...line];
+      for (const key of keys) {
+        const button = document.createElement("button");
+        button.className = "key" + (key.length > 1 ? " key-action" : "");
+        button.type = "button";
+        button.dataset.key = key;
+        button.setAttribute("aria-label", key === "BACK" ? "Backspace" : key === "ENTER" ? "Submit guess" : key);
+        button.innerHTML = key === "BACK" ? icon("back", 19) : key === "ENTER" ? '<span>ENTER</span>' : key;
+        button.addEventListener("click", () => onKey(key, true));
+        row.append(button);
+      }
+      keyboard.append(row);
+    });
+  }
+  for (const button of keyboard.querySelectorAll("button[data-key]")) {
+    const key = button.dataset.key;
+    button.className = "key" + (key.length > 1 ? " key-action" : "") + (hints[key] ? " key-" + hints[key] : "");
+    button.disabled = game.finished || state.revealing;
+  }
 }
 function render() {
   updateHeader();
@@ -461,6 +468,6 @@ settleCompletedRound("wild");
 render();
 window.setInterval(syncDay, 1000);
 // The puzzle must be playable immediately; the help button opens the optional field guide.
-if ("serviceWorker" in navigator && location.protocol === "https:") {
+if ("serviceWorker" in navigator && window.isSecureContext) {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
 }
