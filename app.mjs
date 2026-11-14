@@ -124,34 +124,56 @@ function updateCountdown() {
 function renderBoard() {
   const game = getGame();
   const board = $("#board");
-  board.replaceChildren();
+  // Keep the same cells throughout play. Rebuilding this grid on every keystroke
+  // can reset a screen reader's position in the puzzle.
+  if (board.children.length !== MAX_ROWS) {
+    board.replaceChildren();
+    board.setAttribute("aria-rowcount", String(MAX_ROWS));
+    board.setAttribute("aria-colcount", String(WORD_LENGTH));
+    for (let r = 0; r < MAX_ROWS; r++) {
+      const row = document.createElement("div");
+      row.className = "tile-row";
+      row.setAttribute("role", "row");
+      row.setAttribute("aria-rowindex", String(r + 1));
+      row.dataset.row = String(r);
+      for (let c = 0; c < WORD_LENGTH; c++) {
+        const tile = document.createElement("div");
+        tile.className = "tile";
+        tile.setAttribute("role", "gridcell");
+        tile.setAttribute("aria-colindex", String(c + 1));
+        tile.setAttribute("aria-label", "empty");
+        row.append(tile);
+      }
+      board.append(row);
+    }
+  }
+
   for (let r = 0; r < MAX_ROWS; r++) {
-    const row = document.createElement("div");
-    row.className = "tile-row";
-    row.setAttribute("role", "row");
-    row.dataset.row = String(r);
-    if (r === game.guesses.length && !game.finished) row.classList.add("row-active");
-    if (state.revealing && r === state.revealRow) row.classList.add("row-revealing");
+    const row = board.children[r];
+    const currentRow = r === game.guesses.length && !game.finished;
+    const revealingRow = state.revealing && r === state.revealRow;
+    const rowClass = "tile-row" + (currentRow ? " row-active" : "") + (revealingRow ? " row-revealing" : "");
+    if (row.className !== rowClass) row.className = rowClass;
     const word = game.guesses[r] ?? (r === game.guesses.length ? game.current : "");
     const statuses = r < game.guesses.length ? scoreGuess(game.guesses[r], game.answer) : [];
     for (let c = 0; c < WORD_LENGTH; c++) {
-      const tile = document.createElement("div");
-      tile.className = "tile";
-      tile.setAttribute("role", "gridcell");
+      const tile = row.children[c];
       const letter = word[c] ?? "";
-      tile.textContent = letter;
-      const shown = r < game.guesses.length && (!state.revealing || r !== state.revealRow || c <= state.revealStep);
+      const shown = r < game.guesses.length && (!state.revealing || !revealingRow || c <= state.revealStep);
+      let tileClass = "tile";
+      let label;
       if (shown) {
-        tile.classList.add("tile-" + statuses[c], "tile-revealed");
-        tile.setAttribute("aria-label", letter + ", " + statuses[c]);
-        if (state.revealing && r === state.revealRow && c === state.revealStep) tile.classList.add("tile-flipping");
+        tileClass += " tile-" + statuses[c] + " tile-revealed";
+        label = letter + ", " + statuses[c];
+        if (revealingRow && c === state.revealStep) tileClass += " tile-flipping";
       } else {
-        if (letter) tile.classList.add("tile-filled");
-        tile.setAttribute("aria-label", letter ? letter + ", not evaluated" : "empty");
+        if (letter) tileClass += " tile-filled";
+        label = letter ? letter + ", not evaluated" : "empty";
       }
-      row.append(tile);
+      if (tile.textContent !== letter) tile.textContent = letter;
+      if (tile.className !== tileClass) tile.className = tileClass;
+      if (tile.getAttribute("aria-label") !== label) tile.setAttribute("aria-label", label);
     }
-    board.append(row);
   }
   board.setAttribute("aria-label", "Word grid, " + game.guesses.length + " of 6 guesses submitted");
   $("#progress-indicator").textContent = game.finished ? (game.won ? "SOLVED" : "ENDED") : String(game.guesses.length + 1).padStart(2, "0") + " / 06";
