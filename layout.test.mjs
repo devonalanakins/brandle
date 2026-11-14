@@ -47,4 +47,7 @@ test('first play starts immediately with optional help and accessible feedback',
   assert.match(app, /guessFeedback\(game\.guesses\.at\(-1\), game\.answer\)/);
   assert.match(html, /id="status-line" aria-live="polite" aria-atomic="true"/);
   assert.match(html, /id="help-button"[^>]*aria-label="How to play"/);
+  assert.match(html, /<dialog id="modal" class="modal" aria-labelledby="dialog-title">/);
+  assert.match(app, /heading\.id = "dialog-title"/);
+  assert.match(app, /function canRestoreFocus\(element\)/);
 });
