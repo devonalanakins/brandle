@@ -172,6 +172,21 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
     await cdp.send('Network.emulateNetworkConditions',{
       offline:false,latency:0,downloadThroughput:0,uploadThroughput:0
     });
+    // Reduced-motion gameplay must still reveal a valid guess, announce its
+    // keyboard hints, retain focus and present a completed result without a
+    // long animation delay. No answer is printed into CI logs.
+    await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+    assert.equal(await cdp.eval('matchMedia("(prefers-reduced-motion: reduce)").matches'),true);
+    assert.equal(await cdp.eval("(async () => { const logic = await import(\"./logic.mjs\"); const answer = logic.dailyAnswer(new Date()); const guess = answer === \"CRANE\" ? \"ROAST\" : \"CRANE\"; window.__testAnswer = answer; window.__testHints = logic.keyboardHints([guess],answer); document.querySelector('[data-key=\"BACK\"]').click(); for (const letter of guess) document.querySelector('[data-key=\"' + letter + '\"]').click(); const enter = document.querySelector('[data-key=\"ENTER\"]'); enter.focus(); enter.click(); return true; })()"),true,'submit a valid non-winning guess');
+    await poll(() => cdp.eval('document.querySelector("#progress-indicator").textContent === "02 / 06"'),3000);
+    assert.equal(await cdp.eval('document.activeElement.dataset.key'),"ENTER",'submit retains focus during reduced-motion reveal');
+    assert.equal(await cdp.eval("Object.entries(window.__testHints).every(([letter,status]) => { const labels={correct:\"correct position\",present:\"in word, other position\",absent:\"not in word\"}; return document.querySelector('[data-key=\"' + letter + '\"]').getAttribute(\"aria-label\") === letter + \", \" + labels[status]; })"),true,'learned keyboard hints are spoken in button labels');
+    assert.match(await cdp.eval('document.querySelector("#status-line").textContent'),/RIGHT.+ELSEWHERE.+OUT/);
+    assert.equal(await cdp.eval("(() => { for (const letter of window.__testAnswer) document.querySelector('[data-key=\"' + letter + '\"]').click(); const enter=document.querySelector('[data-key=\"ENTER\"]'); enter.focus(); enter.click(); return true; })()"),true,'submit the known answer');
+    await poll(() => cdp.eval('document.querySelector("#modal").open && document.querySelector("#progress-indicator").textContent === "SOLVED"'),3000);
+    const result = await cdp.eval('JSON.parse(localStorage.getItem("brandle-v1:stats-daily"))');
+    assert.equal(result.played,1,'completed round recorded exactly once');
+    assert.equal(result.wins,1,'completed win recorded');
   } finally {
     ws?.close();
     if (chrome) {chrome.kill();await delay(200);}
