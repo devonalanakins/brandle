@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { readFile, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -97,6 +97,13 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
     const cdp = new CDP(ws);
     await cdp.send('Page.enable');
     await cdp.send('Runtime.enable');
+    const screenshotDir = process.env.BRANDLE_SCREENSHOT_DIR;
+    async function capture(label) {
+      if (!screenshotDir) return;
+      await mkdir(screenshotDir,{recursive:true});
+      const shot = await cdp.send('Page.captureScreenshot',{format:'png',fromSurface:true,captureBeyondViewport:false});
+      await writeFile(join(screenshotDir,label+'.png'),Buffer.from(shot.data,'base64'));
+    }
     await cdp.send('Page.navigate',{url});
     await poll(() => cdp.eval('document.readyState==="complete" && document.querySelectorAll("#keyboard button").length===28'));
     assert.equal(await cdp.eval('Boolean(document.querySelector("#modal")?.open)'),false,'no forced help overlay');
@@ -123,6 +130,9 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
         assert.ok(r.top>=state.game.top-1 && r.bottom<=state.game.bottom+1,
           name+' clipped inside game at '+width+'x'+height);
       }
+      if ((width===320 && height===568) || (width===1440 && height===900)) {
+        await capture('brandle-'+width+'x'+height);
+      }
       console.log(width+'x'+height+': visible board, keyboard, footer; no page overflow');
     }
     // Mobile viewport emulation uses the actual viewport meta rule, not only
@@ -137,6 +147,9 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
         assert.ok(rect?.visible,'mobile '+name+' must be displayed at '+width+'x'+height+': '+JSON.stringify(rect));
         assert.ok(rect.left>=-1 && rect.right<=width+1 && rect.top>=-1 && rect.bottom<=height+1,
           'mobile '+name+' clipped at '+width+'x'+height+': '+JSON.stringify(rect));
+      }
+      if ((width===390 && height===844) || (width===844 && height===390)) {
+        await capture('brandle-mobile-'+width+'x'+height);
       }
       console.log('mobile '+width+'x'+height+': board, keyboard and footer visible');
     }
