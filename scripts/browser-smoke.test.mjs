@@ -130,6 +130,7 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
     await cdp.eval('document.querySelector("#mode-daily").click()');
     assert.equal(await cdp.eval('document.querySelector("#board .tile").textContent'),'C','draft survives mode switch');
     assert.equal(await cdp.eval('document.activeElement === window.__focusedKey'),true,'return to daily preserves keyboard focus');
+    await cdp.eval('document.querySelector("#help-button").focus()');
     await cdp.eval('document.querySelector("#help-button").click()');
     assert.equal(await cdp.eval('document.querySelector("#modal").open'),true,'help opens on demand');
     assert.equal(await cdp.eval('document.activeElement.id'),"modal-close",'dialog manages focus');
