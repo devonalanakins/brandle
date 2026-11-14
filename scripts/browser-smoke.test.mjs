@@ -120,6 +120,20 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
       }
       console.log(width+'x'+height+': visible board, keyboard, footer; no page overflow');
     }
+    // Mobile viewport emulation uses the actual viewport meta rule, not only
+    // desktop window resizing. This remains Chromium, not WebKit/Safari.
+    for (const [width,height] of [[320,568],[390,844],[844,390]]) {
+      await cdp.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:3,mobile:true});
+      await cdp.eval('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
+      const state = await cdp.eval(inspect);
+      assert.ok(state.scrollH<=height+1 && state.scrollW<=width+1,'mobile page overflows '+width+'x'+height);
+      for (const name of ['board','keyboard','footer']) {
+        const rect = state[name];
+        assert.ok(rect && rect.left>=-1 && rect.right<=width+1 && rect.top>=-1 && rect.bottom<=height+1,
+          'mobile '+name+' clipped at '+width+'x'+height+': '+JSON.stringify(rect));
+      }
+      console.log('mobile '+width+'x'+height+': board, keyboard and footer visible');
+    }
     await cdp.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
     await cdp.eval('document.querySelector(\'[data-key="C"]\').click()');
     assert.equal(await cdp.eval('document.querySelector("#board .tile").textContent'),'C','tap enters a letter');
