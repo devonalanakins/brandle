@@ -157,7 +157,7 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
       console.log('mobile '+width+'x'+height+': board, keyboard and footer visible');
     }
     await cdp.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
-    assert.equal(await cdp.eval('(() => { const grid=document.querySelector("#board"); window.__firstTile=grid.querySelector(".tile"); window.__lastTile=grid.querySelector(".tile:last-child"); return grid.getAttribute("aria-rowcount")+"x"+grid.getAttribute("aria-colcount"); })()'),"6x5","grid advertises its complete dimensions");
+    assert.equal(await cdp.eval('(() => { const grid=document.querySelector("#board"); window.__firstTile=grid.querySelector(".tile"); return grid.getAttribute("aria-rowcount")+"x"+grid.getAttribute("aria-colcount"); })()'),"6x5","grid advertises its complete dimensions");
     assert.equal(await cdp.eval('document.querySelector("#board [role=row][aria-rowindex="6"] [aria-colindex="5"]") !== null'),true,"grid indexes the final cell");
     await cdp.eval('document.querySelector(\'[data-key="C"]\').click()');
     assert.equal(await cdp.eval('document.querySelector("#board .tile").textContent'),'C','tap enters a letter');
@@ -204,10 +204,11 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
     // long animation delay. No answer is printed into CI logs.
     await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
     assert.equal(await cdp.eval('matchMedia("(prefers-reduced-motion: reduce)").matches'),true);
+    assert.equal(await cdp.eval('(() => { window.__revealTile = document.querySelector("#board .tile"); return !!window.__revealTile; })()'),true,'board available before reveal');
     assert.equal(await cdp.eval("(async () => { const logic = await import(\"./logic.mjs\"); const answer = logic.dailyAnswer(new Date()); const guess = answer === \"CRANE\" ? \"ROAST\" : \"CRANE\"; window.__testAnswer = answer; window.__testHints = logic.keyboardHints([guess],answer); document.querySelector('[data-key=\"BACK\"]').click(); for (const letter of guess) document.querySelector('[data-key=\"' + letter + '\"]').click(); const enter = document.querySelector('[data-key=\"ENTER\"]'); enter.focus(); enter.click(); return true; })()"),true,'submit a valid non-winning guess');
     await poll(() => cdp.eval('document.querySelector("#progress-indicator").textContent === "02 / 06"'),3000);
     assert.equal(await cdp.eval('document.activeElement.dataset.key'),"ENTER",'submit retains focus during reduced-motion reveal');
-    assert.equal(await cdp.eval('document.querySelector("#board .tile") === window.__firstTile'),false,'page reload created a fresh, independently populated document');
+    assert.equal(await cdp.eval('document.querySelector("#board .tile") === window.__revealTile'),true,'guess reveal preserves the grid cell');
     assert.equal(await cdp.eval('document.querySelectorAll("#board [role=row]").length'),6,'grid retains six indexed rows after reveal');
     assert.equal(await cdp.eval("Object.entries(window.__testHints).every(([letter,status]) => { const labels={correct:\"correct position\",present:\"in word, other position\",absent:\"not in word\"}; return document.querySelector('[data-key=\"' + letter + '\"]').getAttribute(\"aria-label\") === letter + \", \" + labels[status]; })"),true,'learned keyboard hints are spoken in button labels');
     assert.match(await cdp.eval('document.querySelector("#status-line").textContent'),/RIGHT.+ELSEWHERE.+OUT/);
@@ -216,6 +217,7 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
     const result = await cdp.eval('JSON.parse(localStorage.getItem("brandle-v1:stats-daily"))');
     assert.equal(result.played,1,'completed round recorded exactly once');
     assert.equal(result.wins,1,'completed win recorded');
+    assert.equal(await cdp.eval('document.querySelector("#board .tile") === window.__revealTile'),true,'winning reveal preserves the grid cell');
     assert.equal(await cdp.eval('document.querySelector("#modal").getAttribute("aria-labelledby")'),
       "dialog-title",'result dialog gets its name from the visible title');
     assert.equal(await cdp.eval('document.querySelector("#modal #dialog-title")?.tagName'),
