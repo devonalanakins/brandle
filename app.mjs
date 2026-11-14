@@ -192,7 +192,14 @@ function renderKeyboard() {
   }
   for (const button of keyboard.querySelectorAll("button[data-key]")) {
     const key = button.dataset.key;
-    button.className = "key" + (key.length > 1 ? " key-action" : "") + (hints[key] ? " key-" + hints[key] : "");
+    const hint = hints[key];
+    button.className = "key" + (key.length > 1 ? " key-action" : "") + (hint ? " key-" + hint : "");
+    // The colored keyboard also communicates learned hints to screen readers.
+    // Avoid redundant name changes on focused buttons between renders.
+    const hintLabel = { correct: "correct position", present: "in word, other position", absent: "not in word" };
+    const label = key === "BACK" ? "Backspace" : key === "ENTER" ? "Submit guess"
+      : key + (hint ? ", " + hintLabel[hint] : "");
+    if (button.getAttribute("aria-label") !== label) button.setAttribute("aria-label", label);
     button.disabled = game.finished;
     button.setAttribute("aria-disabled", String(game.finished || state.revealing));
   }
@@ -259,13 +266,14 @@ function submit() {
   game.finished = game.won || game.guesses.length >= MAX_ROWS;
   saveGame();
   render();
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let step = 0;
   const reveal = () => {
     if (!state.revealing) return;
-    state.revealStep = step++;
-    sound("flip");
+    state.revealStep = reducedMotion ? WORD_LENGTH - 1 : step++;
+    if (!reducedMotion) sound("flip");
     renderBoard();
-    if (step < 5) {
+    if (!reducedMotion && step < WORD_LENGTH) {
       window.setTimeout(reveal, settings.intensity === "calm" ? 95 : 215);
     } else {
       window.setTimeout(() => {
@@ -282,14 +290,15 @@ function submit() {
         if (game.finished) {
           if (game.won) { sound("win"); celebrate(); }
           else sound("error");
-          window.setTimeout(() => openModal("result"), game.won && settings.intensity === "spectacular" ? 1600 : 460);
+          window.setTimeout(() => openModal("result"),
+            reducedMotion ? 0 : game.won && settings.intensity === "spectacular" ? 1600 : 460);
         } else if (word === game.answer) {
           toast("Pure magic.", "success");
         }
-      }, settings.intensity === "calm" ? 140 : 440);
+      }, reducedMotion ? 0 : settings.intensity === "calm" ? 140 : 440);
     }
   };
-  window.setTimeout(reveal, 170);
+  window.setTimeout(reveal, reducedMotion ? 0 : 170);
 }
 function celebrate() {
   if (settings.intensity === "calm" || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
