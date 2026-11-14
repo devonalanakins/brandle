@@ -25,6 +25,15 @@ jobs:
       - run: node --test tests.mjs
       - run: node --test layout.test.mjs
       - run: node --test scripts/browser-smoke.test.mjs
+        env:
+          BRANDLE_SCREENSHOT_DIR: ${{ runner.temp }}/brandle-visual-qa
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        with:
+          name: brandle-v2-visual-qa
+          path: ${{ runner.temp }}/brandle-visual-qa/*.png
+          if-no-files-found: ignore
+          retention-days: 3
       - run: node build-worker.mjs
       - run: node --check dist/worker.mjs
       - run: node --test worker.test.mjs
