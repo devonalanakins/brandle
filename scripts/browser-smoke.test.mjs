@@ -240,13 +240,11 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
     assert.equal(await cdp.eval('document.querySelector("#progress-indicator").textContent'),"SOLVED",'old round remains scored at midnight');
     assert.equal(await cdp.eval('document.querySelector("#puzzle-label").textContent'),priorLabel,'round label stays on its original date');
     const simulatedDate = await cdp.eval('(async () => ({ today:(await import("./logic.mjs")).utcKey(), iso:new Date().toISOString() }))()');
-    console.log('Rollover simulation:',simulatedDate);
+    assert.equal(simulatedDate.today,simulatedDate.iso.slice(0,10),'simulated UTC date is active');
     await cdp.eval('window.__rolloverErrors=[]; window.addEventListener("error",event => window.__rolloverErrors.push(event.message))');
     await cdp.eval('document.querySelector("#modal-close").click()');
-    await delay(150);
-    const postClose = await cdp.eval('({ open:document.querySelector("#modal").open, progress:document.querySelector("#progress-indicator").textContent, label:document.querySelector("#puzzle-label").textContent, errors:window.__rolloverErrors })');
-    console.log('Rollover after close:',postClose);
-    await poll(() => cdp.eval('document.querySelector("#progress-indicator").textContent === "01 / 06"'),3500);
+    await poll(() => cdp.eval('document.querySelector("#progress-indicator").textContent === "01 / 06"'),5000);
+    assert.deepEqual(await cdp.eval('window.__rolloverErrors'),[],'rollover completes without browser errors');
     assert.notEqual(await cdp.eval('document.querySelector("#puzzle-label").textContent'),priorLabel,'closing results loads the new day');
     assert.equal(await cdp.eval('document.querySelector("#board .tile").textContent'),"",'new day starts with an empty grid');
     assert.equal(await cdp.eval('JSON.parse(localStorage.getItem("brandle-v1:stats-daily")).wins'),1,'previous win survives day transition');
