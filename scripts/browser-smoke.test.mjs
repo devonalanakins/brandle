@@ -106,6 +106,7 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
     }
     await cdp.send('Page.navigate',{url});
     await poll(() => cdp.eval('document.readyState==="complete" && document.querySelectorAll("#keyboard button").length===28'));
+    const enterLabelFits = '(() => {const key=document.querySelector(\'[data-key="ENTER"]\');const t=key?.querySelector("span");if(!key||!t)return false;const a=key.getBoundingClientRect(),b=t.getBoundingClientRect();return b.width>0&&b.left>=a.left-.75&&b.right<=a.right+.75;})()';
     assert.equal(await cdp.eval('Boolean(document.querySelector("#modal")?.open)'),false,'no forced help overlay');
     for (const [width,height] of [[320,568],[390,650],[390,844],[430,932],[844,390],[1440,900]]) {
       await cdp.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
@@ -113,6 +114,7 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
       const state = await cdp.eval(inspect);
       assert.equal(state.tiles,30,'tile count at '+width+'x'+height);
       assert.equal(state.keys,28,'keyboard count at '+width+'x'+height);
+      assert.equal(await cdp.eval(enterLabelFits),true,'Enter label overflows its key at '+width+'x'+height);
       assert.ok(state.scrollH<=state.height+1 && state.scrollW<=state.width+1,
         'page overflow at '+width+'x'+height);
       for (const name of ['board','keyboard','footer','countdown']) {
@@ -141,6 +143,7 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
       await cdp.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:3,mobile:true});
       await cdp.eval('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
       const state = await cdp.eval(inspect);
+      assert.equal(await cdp.eval(enterLabelFits),true,'mobile Enter label overflows its key at '+width+'x'+height);
       assert.ok(state.scrollH<=height+1 && state.scrollW<=width+1,'mobile page overflows '+width+'x'+height);
       for (const name of ['board','keyboard','footer','countdown']) {
         const rect = state[name];
