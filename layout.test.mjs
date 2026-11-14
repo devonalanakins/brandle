@@ -9,6 +9,8 @@ const css = await read('glimmer-v2.css');
 const workerBuilder = await read('build-worker.mjs');
 const serviceWorker = await read('sw.js');
 const app = await read('app.mjs');
+const manifest = JSON.parse(await read('manifest.webmanifest'));
+const serviceWorkerSource = serviceWorker;
 
 test('single-screen layout keeps existing gameplay hooks wired', () => {
   for (const id of ['board', 'keyboard', 'mode-daily', 'mode-wild', 'result-button',
@@ -31,6 +33,10 @@ test('game surface is viewport-locked and includes short-screen/landscape adapta
 });
 
 test('offline bundle includes every visual dependency', () => {
+  assert.ok(!('orientation' in manifest),'installed game must allow landscape rotation');
+  assert.match(serviceWorkerSource, /req\.mode === "navigate"/);
+  assert.match(serviceWorkerSource, /status: 503/);
+  assert.match(app, /window\.isSecureContext/);
   assert.match(workerBuilder, /"glimmer-v2\.css"/);
   assert.match(serviceWorker, /"\.\/glimmer-v2\.css"/);
   assert.match(serviceWorker, /brandle-glimmer-grove-v2/);
@@ -39,6 +45,6 @@ test('offline bundle includes every visual dependency', () => {
 test('first play starts immediately with optional help and accessible feedback', () => {
   assert.doesNotMatch(app, /setTimeout\(\s*\(\)\s*=>\s*openModal\("help"\)/);
   assert.match(app, /guessFeedback\(game\.guesses\.at\(-1\), game\.answer\)/);
-  assert.match(html, /id="status-line" aria-live="polite"/);
+  assert.match(html, /id="status-line" aria-live="polite" aria-atomic="true"/);
   assert.match(html, /id="help-button"[^>]*aria-label="How to play"/);
 });
