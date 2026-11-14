@@ -123,14 +123,40 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
     await cdp.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
     await cdp.eval('document.querySelector(\'[data-key="C"]\').click()');
     assert.equal(await cdp.eval('document.querySelector("#board .tile").textContent'),'C','tap enters a letter');
+    assert.equal(await cdp.eval('(() => { window.__focusedKey = document.querySelector(\'[data-key="A"]\'); window.__focusedKey.focus(); return document.activeElement === window.__focusedKey; })()'),true,'keyboard key takes focus');
     await cdp.eval('document.querySelector("#mode-wild").click()');
     assert.equal(await cdp.eval('document.querySelector("#mode-wild").getAttribute("aria-pressed")'),'true');
+    assert.equal(await cdp.eval('document.activeElement === window.__focusedKey'),true,'mode change preserves keyboard focus');
     await cdp.eval('document.querySelector("#mode-daily").click()');
     assert.equal(await cdp.eval('document.querySelector("#board .tile").textContent'),'C','draft survives mode switch');
+    assert.equal(await cdp.eval('document.activeElement === window.__focusedKey'),true,'return to daily preserves keyboard focus');
     await cdp.eval('document.querySelector("#help-button").click()');
     assert.equal(await cdp.eval('document.querySelector("#modal").open'),true,'help opens on demand');
+    assert.equal(await cdp.eval('document.activeElement.id'),"modal-close",'dialog manages focus');
     await cdp.eval('document.querySelector("#modal-close").click()');
     assert.equal(await cdp.eval('document.querySelector("#modal").open'),false,'help can close');
+    await poll(() => cdp.eval('document.activeElement.id === "help-button"'));
+
+    // The localhost origin is secure. Test offline behavior through the actual
+    // installed service worker, rather than inspecting source strings alone.
+    assert.equal(await cdp.eval('window.isSecureContext'),true,'localhost is a secure context');
+    await poll(() => cdp.eval('Boolean(navigator.serviceWorker?.controller)'),18000);
+    await cdp.send('Network.enable');
+    await cdp.send('Network.emulateNetworkConditions',{
+      offline:true,latency:0,downloadThroughput:0,uploadThroughput:0
+    });
+    const cached = await cdp.eval('fetch("./logic.mjs").then(r => ({status:r.status,kind:r.headers.get("content-type")}))');
+    assert.equal(cached.status,200,'offline game module available');
+    assert.match(cached.kind,/javascript/,'offline module has correct MIME type');
+    const missing = await cdp.eval('fetch("./missing-module.mjs").then(r => ({status:r.status,kind:r.headers.get("content-type")}))');
+    assert.equal(missing.status,503,'missing offline module has explicit failure');
+    assert.match(missing.kind,/text\/plain/,'missing module must not fall back to HTML');
+    await cdp.send('Page.reload');
+    await poll(() => cdp.eval('document.readyState==="complete" && document.querySelectorAll("#keyboard button").length===28'),18000);
+    assert.equal(await cdp.eval('document.querySelector("#board .tile").textContent'),'C','offline reload restores the typed draft');
+    await cdp.send('Network.emulateNetworkConditions',{
+      offline:false,latency:0,downloadThroughput:0,uploadThroughput:0
+    });
   } finally {
     ws?.close();
     if (chrome) {chrome.kill();await delay(200);}
