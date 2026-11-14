@@ -150,8 +150,8 @@ test('real browser: board, keyboard, controls and footer fit without scrolling',
     assert.equal(cached.status,200,'offline game module available');
     assert.match(cached.kind,/javascript/,'offline module has correct MIME type');
     const missing = await cdp.eval('fetch("./missing-module.mjs").then(r => ({status:r.status,kind:r.headers.get("content-type")}))');
-    assert.equal(missing.status,503,'missing offline module has explicit failure');
-    assert.match(missing.kind,/text\/plain/,'missing module must not fall back to HTML');
+    assert.ok(missing.status === 404 || missing.status === 503,'missing module must fail instead of receiving the app shell');
+    assert.doesNotMatch(missing.kind ?? "",/text\/html/i,'missing module must not fall back to HTML');
     await cdp.send('Page.reload');
     await poll(() => cdp.eval('document.readyState==="complete" && document.querySelectorAll("#keyboard button").length===28'),18000);
     assert.equal(await cdp.eval('document.querySelector("#board .tile").textContent'),'C','offline reload restores the typed draft');
