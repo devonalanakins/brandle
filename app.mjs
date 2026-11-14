@@ -43,7 +43,7 @@ const settings = {
 const state = {
   mode: read(KEYS.mode, "daily") === "wild" ? "wild" : "daily",
   date: dateKey, daily: dailyState(dateKey), wild: wildState(),
-  revealing: false, revealRow: -1, revealStep: -1, modal: null, toastTimer: null, lastFocus: null
+  revealing: false, resultPending: false, revealRow: -1, revealStep: -1, modal: null, toastTimer: null, lastFocus: null
 };
 const getGame = () => state[state.mode];
 const getStats = () => normalizeStats(read(state.mode === "daily" ? KEYS.dailyStats : KEYS.wildStats, initialStats()));
@@ -286,6 +286,8 @@ function submit() {
   game.current = "";
   game.won = word === game.answer;
   game.finished = game.won || game.guesses.length >= MAX_ROWS;
+  // Keep this round's UTC date stable until its result has been presented.
+  state.resultPending = game.finished;
   saveGame();
   render();
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -358,7 +360,10 @@ function canRestoreFocus(element) {
   return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
 }
 modal.addEventListener("close", () => {
+  const closingResult = state.modal === "result";
   state.modal = null;
+  // Only after the result closes may a new UTC day replace the board.
+  if (closingResult) syncDay();
   const preferred = state.lastFocus;
   state.lastFocus = null;
   const target = [preferred, $("#result-button"), $("#next-button"), $("#mode-" + state.mode), $("#help-button")].find(canRestoreFocus);
@@ -373,6 +378,7 @@ function openModal(kind) {
   if (state.revealing) return;
   state.lastFocus = document.activeElement;
   state.modal = kind;
+  if (kind === "result") state.resultPending = false;
   const game = getGame();
   const stats = getStats();
   const body = $("#modal-body");
@@ -463,10 +469,16 @@ function nextWild() {
 function syncDay() {
   const today = utcKey();
   if (today !== state.date) {
-    state.date = today;
-    state.daily = dailyState(today);
-    render();
-    toast("A new daily bloom has arrived.", "success");
+    // A round that crosses midnight must finish scoring under its original date.
+    // Don't replace its result behind the dialog or before the animation ends.
+    if (state.revealing || state.resultPending || state.modal === "result") {
+      updateCountdown();
+    } else {
+      state.date = today;
+      state.daily = dailyState(today);
+      render();
+      toast("A new daily bloom has arrived.", "success");
+    }
   } else updateCountdown();
   if (state.modal === "result" && $("#dialog-countdown")) $("#dialog-countdown").textContent = $("#next-countdown").textContent;
 }
